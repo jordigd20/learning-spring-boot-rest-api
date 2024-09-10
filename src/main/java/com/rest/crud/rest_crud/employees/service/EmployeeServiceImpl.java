@@ -2,78 +2,62 @@ package com.rest.crud.rest_crud.employees.service;
 
 import com.rest.crud.rest_crud.common.errors.BadRequestException;
 import com.rest.crud.rest_crud.common.errors.NotFoundException;
-import com.rest.crud.rest_crud.employees.dao.EmployeeDAO;
+import com.rest.crud.rest_crud.employees.dao.EmployeeRepository;
 import com.rest.crud.rest_crud.employees.entity.Employee;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
-    private EmployeeDAO employeeDAO;
+
+    private EmployeeRepository employeeRepository;
 
     @Autowired
-    public EmployeeServiceImpl(EmployeeDAO employeeDAO) {
-        this.employeeDAO = employeeDAO;
+    public EmployeeServiceImpl(EmployeeRepository employeeRepository) {
+        this.employeeRepository = employeeRepository;
     }
 
     @Override
     public List<Employee> findAllEmployees() {
-        return this.employeeDAO.findAll();
+        return employeeRepository.findAll();
     }
 
     @Override
     public Employee findEmployeeById(Integer id) {
-        Employee employee = this.employeeDAO.findById(id);
+        Optional<Employee> employee = employeeRepository.findById(id);
 
-        if (employee == null) {
+        if (employee.isEmpty()) {
             throw new NotFoundException("Employee with id: #" + id + " was not found");
         }
 
-        return employee;
+        return employee.get();
     }
 
     @Override
-    @Transactional
     public Employee createEmployee(Employee employee) {
         this.validateEmployee(employee);
-        this.employeeDAO.save(employee);
-
-        return employee;
+        return employeeRepository.save(employee);
     }
 
     @Override
-    @Transactional
     public Employee updateEmployee(Employee employee, Integer employeeId) {
         this.validateEmployee(employee);
 
-        Employee employeeFounded = this.employeeDAO.findById(employeeId);
+        Employee foundedEmployee = this.findEmployeeById(employeeId);
 
-        if (employeeFounded == null) {
-            throw new NotFoundException("Employee with id: #" + employeeId + " was not found");
-        }
+        employee.setId(foundedEmployee.getId());
 
-        employeeFounded.setEmail(employee.getEmail());
-        employeeFounded.setFirstName(employee.getFirstName());
-        employeeFounded.setLastName(employee.getLastName());
-        employeeFounded.setId(employeeId);
-
-        return this.employeeDAO.update(employeeFounded);
+        return employeeRepository.save(employee);
     }
 
     @Override
-    @Transactional
     public String deleteEmployee(Integer employeeId) {
+        Employee foundedEmployee = this.findEmployeeById(employeeId);
 
-        Employee employee = this.employeeDAO.findById(employeeId);
-
-        if (employee == null) {
-            throw new NotFoundException("Employee with id: #" + employeeId + " was not found");
-        }
-
-        this.employeeDAO.delete(employee);
+        employeeRepository.delete(foundedEmployee);
 
         return "The employee with id: #" + employeeId + " was successfully deleted";
     }
@@ -91,5 +75,4 @@ public class EmployeeServiceImpl implements EmployeeService {
             throw new BadRequestException("You must provide an email");
         }
     }
-
 }
